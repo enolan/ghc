@@ -142,7 +142,7 @@ typedef struct Task_ {
     // The current top-of-stack InCall
     struct InCall_ *incall;
 
-    nat n_spare_incalls;
+    uint32_t n_spare_incalls;
     struct InCall_ *spare_incalls;
 
     rtsBool    worker;          // == rtsTrue if this is a worker Task
@@ -194,7 +194,7 @@ extern Mutex all_tasks_mutex;
 // Requires: sched_mutex.
 //
 void initTaskManager (void);
-nat  freeTaskManager (void);
+uint32_t  freeTaskManager (void);
 
 // Create a new Task for a bound thread.  This Task must be released
 // by calling boundTaskExiting.  The Task is cached in
@@ -249,9 +249,9 @@ void interruptWorkerTask (Task *task);
 #endif /* THREADED_RTS */
 
 // For stats
-extern nat taskCount;
-extern nat workerCount;
-extern nat peakWorkerCount;
+extern uint32_t taskCount;
+extern uint32_t workerCount;
+extern uint32_t peakWorkerCount;
 
 // -----------------------------------------------------------------------------
 // INLINE functions... private from here on down:

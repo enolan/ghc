@@ -12,7 +12,7 @@
 #include "BeginPrivate.h"
 
 void    heapCensus         (Time t);
-nat     initHeapProfiling  (void);
+uint32_t     initHeapProfiling  (void);
 void    endHeapProfiling   (void);
 rtsBool strMatchesSelector (const char* str, const char* sel);
 

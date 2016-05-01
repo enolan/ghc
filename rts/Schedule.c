@@ -105,7 +105,7 @@ Mutex sched_mutex;
 
 // Local stats
 #ifdef THREADED_RTS
-static nat n_failed_trygrab_idles = 0, n_idle_caps = 0;
+static uint32_t n_failed_trygrab_idles = 0, n_idle_caps = 0;
 #endif
 
 /* -----------------------------------------------------------------------------
@@ -125,10 +125,11 @@ static void scheduleFindWork (Capability **pcap);
 static void scheduleYield (Capability **pcap, Task *task);
 #endif
 #if defined(THREADED_RTS)
-static nat requestSync (Capability **pcap, Task *task, nat sync_type);
+static uint32_t requestSync (Capability **pcap, Task *task, uint32_t sync_type);
 static void acquireAllCapabilities(Capability *cap, Task *task);
-static void releaseAllCapabilities(nat n, Capability *cap, Task *task);
-static void startWorkerTasks (nat from USED_IF_THREADS, nat to USED_IF_THREADS);
+static void releaseAllCapabilities(uint32_t n, Capability *cap, Task *task);
+static void startWorkerTasks (uint32_t from USED_IF_THREADS,
+                                uint32_t to USED_IF_THREADS);
 #endif
 static void scheduleStartSignalHandlers (Capability *cap);
 static void scheduleCheckBlockedThreads (Capability *cap);
@@ -141,7 +142,7 @@ static void scheduleActivateSpark(Capability *cap);
 static void schedulePostRunThread(Capability *cap, StgTSO *t);
 static rtsBool scheduleHandleHeapOverflow( Capability *cap, StgTSO *t );
 static rtsBool scheduleHandleYield( Capability *cap, StgTSO *t,
-                                    nat prev_what_next );
+                                    uint32_t prev_what_next );
 static void scheduleHandleThreadBlocked( StgTSO *t );
 static rtsBool scheduleHandleThreadFinished( Capability *cap, Task *task,
                                              StgTSO *t );
@@ -175,7 +176,7 @@ schedule (Capability *initialCapability, Task *task)
   StgTSO *t;
   Capability *cap;
   StgThreadReturnCode ret;
-  nat prev_what_next;
+  uint32_t prev_what_next;
   rtsBool ready_to_gc;
 #if defined(THREADED_RTS)
   rtsBool first = rtsTrue;
@@ -426,7 +427,7 @@ run_thread:
     case ACTIVITY_DONE_GC: {
         // ACTIVITY_DONE_GC means we turned off the timer signal to
         // conserve power (see #1623).  Re-enable it here.
-        nat prev;
+        uint32_t prev;
         prev = xchg((P_)&recent_activity, ACTIVITY_YES);
         if (prev == ACTIVITY_DONE_GC) {
 #ifndef PROFILING
@@ -702,7 +703,7 @@ schedulePushWork(Capability *cap USED_IF_THREADS,
 #if defined(THREADED_RTS)
 
     Capability *free_caps[n_capabilities], *cap0;
-    nat i, n_free_caps;
+    uint32_t i, n_free_caps;
 
     // migration can be turned off with +RTS -qm
     if (!RtsFlags.ParFlags.migrate) return;
@@ -1176,7 +1177,7 @@ scheduleHandleHeapOverflow( Capability *cap, StgTSO *t )
  * -------------------------------------------------------------------------- */
 
 static rtsBool
-scheduleHandleYield( Capability *cap, StgTSO *t, nat prev_what_next )
+scheduleHandleYield( Capability *cap, StgTSO *t, uint32_t prev_what_next )
 {
     /* put the thread back on the run queue.  Then, if we're ready to
      * GC, check whether this is the last task to stop.  If so, wake
@@ -1361,9 +1362,9 @@ scheduleNeedHeapProfile( rtsBool ready_to_gc STG_UNUSED )
 //           type of the other sync request.
 //
 #if defined(THREADED_RTS)
-static nat requestSync (Capability **pcap, Task *task, nat sync_type)
+static uint32_t requestSync (Capability **pcap, Task *task, uint32_t sync_type)
 {
-    nat prev_pending_sync;
+    uint32_t prev_pending_sync;
 
     prev_pending_sync = cas(&pending_sync, 0, sync_type);
 
@@ -1394,7 +1395,7 @@ static nat requestSync (Capability **pcap, Task *task, nat sync_type)
 static void acquireAllCapabilities(Capability *cap, Task *task)
 {
     Capability *tmpcap;
-    nat i;
+    uint32_t i;
 
     for (i=0; i < n_capabilities; i++) {
         debugTrace(DEBUG_sched, "grabbing all the capabilies (%d/%d)", i, n_capabilities);
@@ -1415,9 +1416,9 @@ static void acquireAllCapabilities(Capability *cap, Task *task)
     task->cap = cap;
 }
 
-static void releaseAllCapabilities(nat n, Capability *cap, Task *task)
+static void releaseAllCapabilities(uint32_t n, Capability *cap, Task *task)
 {
-    nat i;
+    uint32_t i;
 
     for (i = 0; i < n; i++) {
         if (cap->no != i) {
@@ -1439,11 +1440,11 @@ scheduleDoGC (Capability **pcap, Task *task USED_IF_THREADS,
 {
     Capability *cap = *pcap;
     rtsBool heap_census;
-    nat collect_gen;
+    uint32_t collect_gen;
     rtsBool major_gc;
 #ifdef THREADED_RTS
-    nat gc_type;
-    nat i, sync;
+    uint32_t gc_type;
+    uint32_t i, sync;
     StgTSO *tso;
 #endif
 
@@ -1771,11 +1772,11 @@ forkProcess(HsStablePtr *entry
     pid_t pid;
     StgTSO* t,*next;
     Capability *cap;
-    nat g;
+    uint32_t g;
     Task *task = NULL;
-    nat i;
+    uint32_t i;
 #ifdef THREADED_RTS
-    nat sync;
+    uint32_t sync;
 #endif
 
     debugTrace(DEBUG_sched, "forking!");
@@ -1965,7 +1966,7 @@ forkProcess(HsStablePtr *entry
  * ------------------------------------------------------------------------- */
 
 void
-setNumCapabilities (nat new_n_capabilities USED_IF_THREADS)
+setNumCapabilities (uint32_t new_n_capabilities USED_IF_THREADS)
 {
 #if !defined(THREADED_RTS)
     if (new_n_capabilities != 1) {
@@ -1980,10 +1981,10 @@ setNumCapabilities (nat new_n_capabilities USED_IF_THREADS)
 #else
     Task *task;
     Capability *cap;
-    nat sync;
-    nat n;
+    uint32_t sync;
+    uint32_t n;
     Capability *old_capabilities = NULL;
-    nat old_n_capabilities = n_capabilities;
+    uint32_t old_n_capabilities = n_capabilities;
 
     if (new_n_capabilities == enabled_capabilities) return;
 
@@ -2101,7 +2102,7 @@ deleteAllThreads ( Capability *cap )
     // NOTE: only safe to call if we own all capabilities.
 
     StgTSO* t, *next;
-    nat g;
+    uint32_t g;
 
     debugTrace(DEBUG_sched,"deleting all threads");
     for (g = 0; g < RtsFlags.GcFlags.generations; g++) {
@@ -2405,10 +2406,10 @@ void scheduleWorker (Capability *cap, Task *task)
  * -------------------------------------------------------------------------- */
 
 static void
-startWorkerTasks (nat from USED_IF_THREADS, nat to USED_IF_THREADS)
+startWorkerTasks (uint32_t from USED_IF_THREADS, uint32_t to USED_IF_THREADS)
 {
 #if defined(THREADED_RTS)
-    nat i;
+    uint32_t i;
     Capability *cap;
 
     for (i = from; i < to; i++) {
@@ -2499,7 +2500,7 @@ exitScheduler (rtsBool wait_foreign USED_IF_THREADS)
 void
 freeScheduler( void )
 {
-    nat still_running;
+    uint32_t still_running;
 
     ACQUIRE_LOCK(&sched_mutex);
     still_running = freeTaskManager();
