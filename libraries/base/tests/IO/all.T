@@ -157,3 +157,12 @@ test('encodingerror001', normal, compile_and_run, [''])
 test('T4808', [exit_code(1), extra_clean(['T4808.test'])], compile_and_run, [''])
 test('T4895', normal, compile_and_run, [''])
 test('T7853', normal, compile_and_run, [''])
+test('T12010',
+     [cmd_wrapper(
+          # socket number and error are nondeterministic.
+          lambda c: c + "; grep -P \"T12010(.exe)*: <socket: \d+>: hGetBuf: .*\" T12010.run.stderr"),
+      reqlib('network'),
+      extra_ways(['threaded1']),
+      ignore_output,
+      omit_ways(['ghci'])], # log is in the wrong place in GHCI mode.
+     compile_and_run, [''])
